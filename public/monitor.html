@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Monitor Sinkronisasi Gold</title>
+    <!--script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script-->
+    <script src="axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .status-container {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .error {
+            color: red;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Status Sinkronisasi Gold</h1>
+    <button id="syncButton" onclick="startSync()">Mulai Sinkronisasi</button>
+    <div id="status" class="status-container"></div>
+
+    <script>
+        function updateStatus() {
+            axios.get('/api/sync/status')
+                .then(response => {
+                    const status = response.data;
+                    const syncButton = document.getElementById('syncButton');
+                    syncButton.disabled = status.isRunning;
+                    
+                    document.getElementById('status').innerHTML = `
+                        <p><strong>Status:</strong> ${status.isRunning ? 'Sedang Berjalan' : 'Idle'}</p>
+                        <p><strong>Terakhir Dijalankan:</strong> ${status.lastRun ? new Date(status.lastRun).toLocaleString() : 'Belum pernah'}</p>
+                        <p><strong>Terakhir Berhasil:</strong> ${status.lastSuccess ? new Date(status.lastSuccess).toLocaleString() : 'Belum pernah'}</p>
+                        <p><strong>Progress:</strong> ${status.processedItems} dari ${status.totalItems} (${status.progress}%)</p>
+                        ${status.lastError ? `<p class="error"><strong>Error Terakhir:</strong> ${status.lastError}</p>` : ''}
+                    `;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('status').innerHTML = `
+                        <p class="error">Gagal mengambil status: ${error.message}</p>
+                    `;
+                });
+        }
+
+        function startSync() {
+            const syncButton = document.getElementById('syncButton');
+            syncButton.disabled = true;
+            
+            axios.post('/api/sync/start')
+                .then(response => {
+                    console.log('Sync started:', response.data);
+                    updateStatus();
+                })
+                .catch(error => {
+                    console.error('Error starting sync:', error);
+                    syncButton.disabled = false;
+                    alert('Gagal memulai sinkronisasi: ' + error.message);
+                });
+        }
+
+        // Update status setiap 5 detik
+        setInterval(updateStatus, 5000);
+        updateStatus(); // Initial update
+    </script>
+</body>
+</html>
